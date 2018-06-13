@@ -1,3 +1,11 @@
 page-feed {
+  h2.feed_title {
+    color: midnightblue;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
 
+  p.feed_date {
+    color: darkgreen;
+  }
 }
