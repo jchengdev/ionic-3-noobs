@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
-import { IonicPage, NavController, NavParams } from 'ionic-angular';
+import { IonicPage, NavController, NavParams, LoadingController } from 'ionic-angular';
 
 import { MovieProvider } from '../../providers/movie/movie';
+
+import { FilmeDetalhesPage } from '../filme-detalhes/filme-detalhes';
 
 /**
  * Generated class for the FeedPage page.
@@ -20,39 +22,95 @@ import { MovieProvider } from '../../providers/movie/movie';
 })
 export class FeedPage {
   public objeto_feed: object = {
-    titulo: 'O Aventureiro',
-    data_usuario: 'November 5, 1955',
-    descricao: 'App incrível',
     likes: 12,
     comentarios: 4,
     data: '11h ago'
   }
 
   public listaFilmes = new Array<any>();
-  //public nomeUsuario: string = 'O Aventureiro';
+  public page = 1;
+  public loader;
+  public refresher;
+  public isRefreshing: boolean = false;
+  public infiniteScroll;
 
   constructor(
     public navCtrl: NavController,
     public navParams: NavParams,
-    private movieProvider: MovieProvider
+    private movieProvider: MovieProvider,
+    public loadingCtrl: LoadingController
   ) {
   }
 
-  // public somaDoisNumeros(num1: number, num2: number): void {
-  //   alert('minha função funciona: ' + (num1 + num2));
-  // }
+  presentLoading() {
+    this.loader = this.loadingCtrl.create({
+      content: "Carregando filmes..."
+    });
+    this.loader.present();
+  }
 
-  ionViewDidLoad() {
-    console.log('ionViewDidLoad FeedPage');
-    // this.somaDoisNumeros(1,2);
-    this.movieProvider.getLatestMovies().subscribe(
+  closeLoading() {
+    this.loader.dismiss();
+  }
+
+  doRefresh(refresher) {
+    this.refresher = refresher;
+    this.isRefreshing = true;
+    this.page = 1;
+
+    this.carregarFilmes();
+  }
+
+  doInfinite(infiniteScroll) {
+    this.page++;
+    this.infiniteScroll = infiniteScroll;
+    this.carregarFilmes(true);
+  }
+
+  abrirDetalhes(filme) {
+    this.navCtrl.push(FilmeDetalhesPage, { id: filme.imdbID });
+  }
+
+  ionViewDidEnter() {
+    console.log('ionViewDidEnter FeedPage');
+
+    this.carregarFilmes();
+  }
+
+  carregarFilmes(newpage: boolean = false) {
+    this.presentLoading();
+    this.movieProvider.getLatestMovies(this.page).subscribe(
       data => {
-        this.listaFilmes = JSON.parse((data as any)._body).Search;
+        const response = JSON.parse((data as any)._body).Search;
+        if (newpage) {
+          this.listaFilmes = this.listaFilmes.concat(response);
+          this.infiniteScroll.complete();
+        } else {
+          this.listaFilmes = response;
+        }
         console.log(this.listaFilmes);
-      }, 
+
+        this.closeLoading();
+        if (this.isRefreshing) {
+          this.refresher.complete();
+          this.isRefreshing = false;
+        }
+      },
       error => {
         console.log(error);
+
+        this.closeLoading();
+        if (this.isRefreshing) {
+          this.refresher.complete();
+          this.isRefreshing = false;
+        }
       });
+  }
+
+  ionViewWillLeave() {
+    console.log('ionViewWillLeave FeedPage');
+    this.listaFilmes = new Array<any>();
+    this.page = 1;
   }
 
 }
